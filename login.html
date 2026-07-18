@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abeelash R Portfolio | Login</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+
+<body>
+    <!--================ STELLAR VORTEX BACKGROUND ================-->
+    <canvas id="glcanvas"></canvas>
+
+    <!--================ LOGIN BOX ================-->
+    <div class="login-wrap">
+        <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to Portfolio</a>
+
+        <div class="login-box">
+            <h2>Login</h2>
+
+            <form id="loginForm">
+                <div class="input-group">
+                    <input type="email" placeholder="Email" required>
+                    <span class="input-icon"><i class="fa-solid fa-envelope" style="color:#ffffff;"></i></span>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="password" placeholder="Password" required>
+                    <span class="input-icon toggle-password" id="togglePassword"><i class="fa-solid fa-lock" style="color:#ffffff;"></i></span>
+                </div>
+
+                <div class="forgot-password">
+                    <a href="#">Forgot your password ?</a>
+                </div>
+
+                <button type="submit" class="login-btn">LOGIN</button>
+            </form>
+
+            <div class="social-login">
+                <p>log in with</p>
+                <div class="social-icons">
+                    <div class="social-icon facebook">f</div>
+                    <div class="social-icon twitter">&#120143;</div>
+                    <div class="social-icon google">G</div>
+                </div>
+            </div>
+
+            <div class="signup-link">
+                <a href="#">Sign Up</a>
+            </div>
+        </div>
+    </div>
+
+    <!--================ VORTEX SHADERS ================-->
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec2 a_position;
+        void main() {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        #ifdef GL_ES
+        precision highp float;
+        #endif
+        uniform vec2 u_resolution;
+        uniform vec2 u_mouse;
+        uniform float u_time;
+
+        vec3 palette_fire(float t, float factor) {
+            vec3 a = vec3(0.1, 0.2, 0.5);
+            vec3 b = vec3(0.3, 0.5, 0.7);
+            vec3 c = vec3(0.8, 1.0, 1.2);
+            vec3 d = vec3(0.2, 0.4, 0.6);
+
+            a += 0.15 * sin(vec3(0.3, 0.1, 0.2) * factor);
+            b += 0.25 * cos(vec3(0.1, 0.4, 0.2) * factor);
+
+            return a + b * cos(6.28318 * (c * t + d));
+        }
+
+        void main() {
+            vec2 st = (gl_FragCoord.xy / u_resolution.xy) * 2.0 - 1.0;
+            st.x *= u_resolution.x/u_resolution.y;
+            vec3 color = vec3(0.0);
+            vec2 mouse_st = vec2(u_mouse.x, u_resolution.y - u_mouse.y) / u_resolution.xy;
+            mouse_st = (mouse_st * 2.0 - 1.0) * vec2(1.0, -1.0);
+            mouse_st.x *= u_resolution.x / u_resolution.y;
+
+            vec2 mouse_vec = st - mouse_st;
+            float mouse_dist = length(mouse_vec);
+            float mouse_push = smoothstep(0.7, 0.0, mouse_dist) * 0.5;
+
+            if (u_mouse.x > 0.0) {
+                st += normalize(mouse_vec) * mouse_push;
+            }
+            float R_global = length(st);
+            float angle_global = atan(st.y, st.x);
+            float twist = 0.8 * sin(R_global * 2.0 - u_time * 0.6);
+            st *= mat2(cos(twist), sin(twist), -sin(twist), cos(twist));
+            for (float i = 1.0; i < 6.0; i++) {
+                vec2 st0 = st;
+                float sgn = 1.0 - 2.0 * mod(i, 2.0);
+
+                float t = u_time * 0.03 - float(i) * 0.5;
+                st0 *= mat2(cos(t), sin(t), -sin(t), cos(t));
+
+                float R = length(st0);
+                float d = R * i;
+                float angle = atan(st0.y, st0.x);
+                float num_arms = 6.0 + 2.0 * sin(u_time * 0.15 + i * 0.5);
+                float angle_warped = angle * num_arms;
+                float dist_warp_factor = 1.0 + 0.4 * sin(angle * 8.0 + u_time * 0.7 - i);
+                float d_warped = d * dist_warp_factor;
+
+                vec3 pal = palette_fire(-exp((length(d_warped) * -0.9)), abs(d_warped) * 0.4);
+                float radial = exp(-R);
+                radial *= smoothstep(1.2, 0.5, R);
+                pal *= radial;
+                float phase = -(d_warped + sgn * angle_warped) + u_time * 0.4;
+
+                float v = sin(phase);
+                v = max(abs(v), 0.01);
+                float w = pow(0.02 / v, 0.8);
+                color += pal * w;
+            }
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
+    <script src="vortex.js"></script>
+    <script src="cursor.js"></script>
+
+    <script>
+        const togglePassword = document.getElementById("togglePassword");
+        const password = document.getElementById("password");
+        togglePassword.addEventListener("click", () => {
+            const type = password.getAttribute("type") === "password" ? "text" : "password";
+            password.setAttribute("type", type);
+            togglePassword.querySelector("i").classList.toggle("fa-lock");
+            togglePassword.querySelector("i").classList.toggle("fa-unlock");
+        });
+    </script>
+</body>
+
+</html>
